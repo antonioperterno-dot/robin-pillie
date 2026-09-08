@@ -18,4 +18,4 @@ target_compile_options(pocketsoccer PRIVATE -Wall -Wextra -Wpedantic)
 target_include_directories(pocketsoccer PRIVATE
     ${ANDROID_NDK}/sources/android/native_app_glue
 )
-target_link_libraries(pocketsoccer app-glue android log GLESv2)
+target_link_libraries(pocketsoccer app-glue android log EGL GLESv2)

@@ -1,9 +1,14 @@
 # Built files
 build/
 app/build/
+*.apk
+*.aab
 *.iml
 _LOCALIZE_LOCALEDIR
 .localize
+
+# Local SDK path (CI provides its own)
+local.properties
 
 # NDK intermediate
 app/src/main/cpp/CMakeFiles/
@@ -12,6 +17,9 @@ app/src/main/cpp/Makefile
 app/src/main/cpp/*.o
 app/src/main/cpp/*.obj
 app/src/main/cpp/*.exe
+
+# Gradle
+.gradle/
 
 # IDE
 .idea/

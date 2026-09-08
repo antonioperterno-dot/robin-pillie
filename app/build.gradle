@@ -5,6 +5,7 @@ plugins {
 android {
     namespace 'com.pocketsoccer'
     compileSdk 35
+    ndkVersion '27.0.12077973'
 
     defaultConfig {
         applicationId 'com.pocketsoccer'
@@ -16,8 +17,23 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags '-std=c++17 -Wall -Wextra'
+                abiFilters 'arm64-v8a', 'armeabi-v7a'
             }
         }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     externalNativeBuild {
