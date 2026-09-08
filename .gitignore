@@ -1,0 +1,25 @@
+# Built files
+build/
+app/build/
+*.iml
+_LOCALIZE_LOCALEDIR
+.localize
+
+# NDK intermediate
+app/src/main/cpp/CMakeFiles/
+app/src/main/cpp/CMakeCache.txt
+app/src/main/cpp/Makefile
+app/src/main/cpp/*.o
+app/src/main/cpp/*.obj
+app/src/main/cpp/*.exe
+
+# IDE
+.idea/
+*.swp
+*.swo
+.vscode/
+*.code-workspace
+
+# OS
+Thumbs.db
+.DS_Store

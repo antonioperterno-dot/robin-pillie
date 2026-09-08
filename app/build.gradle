@@ -1,0 +1,29 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.pocketsoccer'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.pocketsoccer'
+        minSdk 29
+        targetSdk 35
+        versionCode 1
+        versionName '0.1'
+
+        externalNativeBuild {
+            cmake {
+                cppFlags '-std=c++17 -Wall -Wextra'
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+}
