@@ -8,6 +8,8 @@ add_library(app-glue STATIC
 add_library(pocketsoccer SHARED
     main.cpp
     game_rules.cpp
+    game_world.cpp
+    renderer.cpp
     wifi_session.cpp
 )
 

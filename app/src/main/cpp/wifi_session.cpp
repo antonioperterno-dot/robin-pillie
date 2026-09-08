@@ -2,92 +2,70 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 namespace soccer {
-namespace {
-constexpr const char* kHelloPacket = "POCKET_SOCCER_HELLO_V1";
-constexpr const char* kHostPacket = "POCKET_SOCCER_HOST_V1";
-}
 
-WifiSession::WifiSession() : socketFd_(-1), running_(false), status_("Offline") {}
-WifiSession::~WifiSession() { Stop(); }
+WifiSession::~WifiSession() { Close(); }
 
-bool WifiSession::StartHost(uint16_t port) {
-    Stop();
-    socketFd_ = socket(AF_INET, SOCK_DGRAM, 0);
-    if (socketFd_ < 0) {
-        status_ = "Could not create Wi-Fi socket";
-        return false;
-    }
+bool WifiSession::Bind(uint16_t port) {
+    Close();
+    fd_ = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd_ < 0) return false;
 
     int reuse = 1;
-    setsockopt(socketFd_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-    sockaddr_in address{};
+    setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+
+    sockaddr_in address = {};
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_ANY);
     address.sin_port = htons(port);
-    if (bind(socketFd_, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0) {
-        Stop();
-        status_ = "Could not open host port";
+    if (bind(fd_, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0) {
+        Close();
         return false;
     }
-    fcntl(socketFd_, F_SETFL, O_NONBLOCK);
-    running_ = true;
-    status_ = "Host ready - share your Wi-Fi address";
+    fcntl(fd_, F_SETFL, O_NONBLOCK);
     return true;
 }
 
-bool WifiSession::JoinHost(const std::string& hostAddress, uint16_t port) {
-    Stop();
-    socketFd_ = socket(AF_INET, SOCK_DGRAM, 0);
-    if (socketFd_ < 0) {
-        status_ = "Could not create Wi-Fi socket";
-        return false;
+void WifiSession::Close() {
+    if (fd_ >= 0) {
+        close(fd_);
+        fd_ = -1;
     }
+}
 
-    sockaddr_in address{};
-    address.sin_family = AF_INET;
-    address.sin_port = htons(port);
-    if (inet_pton(AF_INET, hostAddress.c_str(), &address.sin_addr) != 1) {
-        Stop();
-        status_ = "Enter a valid host address";
-        return false;
-    }
-    sendto(socketFd_, kHelloPacket, sizeof(kHelloPacket), 0,
-           reinterpret_cast<sockaddr*>(&address), sizeof(address));
-    fcntl(socketFd_, F_SETFL, O_NONBLOCK);
-    running_ = true;
-    status_ = "Joining host...";
+bool WifiSession::EnableBroadcast() {
+    if (fd_ < 0) return false;
+    int on = 1;
+    return setsockopt(fd_, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) == 0;
+}
+
+bool WifiSession::SendTo(const sockaddr_in& to, const void* data, int len) {
+    if (fd_ < 0 || data == nullptr || len <= 0) return false;
+    const ssize_t sent = sendto(fd_, data, static_cast<size_t>(len), 0,
+                                reinterpret_cast<const sockaddr*>(&to), sizeof(to));
+    return sent == static_cast<ssize_t>(len);
+}
+
+bool WifiSession::SendBroadcast(uint16_t destPort, const void* data, int len) {
+    sockaddr_in to = {};
+    to.sin_family = AF_INET;
+    to.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+    to.sin_port = htons(destPort);
+    return SendTo(to, data, len);
+}
+
+bool WifiSession::Receive(Packet* out) {
+    if (fd_ < 0 || out == nullptr) return false;
+    socklen_t fromLen = sizeof(out->from);
+    const ssize_t n = recvfrom(fd_, out->data, kMaxPacketSize - 1, 0,
+                               reinterpret_cast<sockaddr*>(&out->from), &fromLen);
+    if (n <= 0) return false;
+    out->len = static_cast<int>(n);
+    out->data[n] = '\0';
     return true;
 }
-
-void WifiSession::Stop() {
-    if (socketFd_ >= 0) close(socketFd_);
-    socketFd_ = -1;
-    running_ = false;
-    status_ = "Offline";
-}
-
-void WifiSession::Poll() {
-    if (!running_) return;
-    char packet[128]{};
-    sockaddr_in sender{};
-    socklen_t senderLength = sizeof(sender);
-    const auto bytes = recvfrom(socketFd_, packet, sizeof(packet) - 1, 0,
-                                reinterpret_cast<sockaddr*>(&sender), &senderLength);
-    if (bytes <= 0) return;
-
-    if (std::string(packet, static_cast<size_t>(bytes)) == kHelloPacket) {
-        status_ = "Wi-Fi link active";
-        sendto(socketFd_, kHostPacket, sizeof(kHostPacket), 0,
-               reinterpret_cast<sockaddr*>(&sender), senderLength);
-    }
-}
-
-bool WifiSession::IsRunning() const { return running_; }
-const std::string& WifiSession::Status() const { return status_; }
 
 }  // namespace soccer
